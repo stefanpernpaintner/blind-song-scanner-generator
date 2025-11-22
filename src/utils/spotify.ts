@@ -1,4 +1,5 @@
 import { SPOTIFY_API_BASE, SPOTIFY_TOKEN_SOURCE } from '../data/config.ts';
+import { Song, SpotifyTrack } from '../types.ts';
 
 export async function getSpotifyToken(): Promise<string> {
   const response = await fetch(`${SPOTIFY_TOKEN_SOURCE}`, {
