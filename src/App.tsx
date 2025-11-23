@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FileDown, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, FileDown } from 'lucide-react';
 import { SongTable } from './components/SongTable';
 import { WarningPopUp } from './components/WarningPopUp.tsx';
 import { PlaylistInput } from './pages/PlaylistInput';
@@ -10,6 +10,7 @@ import { useDebouncedCallback } from 'use-debounce';
 function App() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [showBackWarning, setShowBackWarning] = useState(false);
+  const [images, setImages] = useState<(string | undefined)[]>([]);
 
   useEffect(() => {
     if (localStorage.getItem('songs') !== null) {
@@ -48,13 +49,32 @@ function App() {
     setSongs([]);
   };
 
+  // Handle image file selection and convert to base64
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files || []);
+    // Read each file as a data URL
+    const dataUrls = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          }),
+      ),
+    );
+    setImages(dataUrls.slice(0, songs.length));
+  };
+
   if (songs.length === 0) {
     return <PlaylistInput onPlaylistLoad={handlePlaylistLoad} />;
   }
 
   const handleGeneratePDF = async () => {
     try {
-      const pdf = await generatePDF(songs);
+      const pdf = await generatePDF(songs, images);
       pdf.save('blind-song-scanner-tiles.pdf');
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -103,14 +123,40 @@ function App() {
                 Imported tracks
               </h1>
             </div>
-            <button
-              onClick={handleGeneratePDF}
-              className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#1DB954] hover:bg-[#1ed760] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1DB954] transition-colors"
-            >
-              <FileDown className="w-5 h-5 mr-2" />
-              <span className="hidden sm:inline">Generate PDF</span>
-              <span className="sm:hidden">PDF</span>
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                multiple
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+                id="image-upload"
+              />
+              <div className="flex items-center gap-2">
+                {images.length > 0 && (
+                  <span className="text-xs font-semibold text-[#1DB954]">
+                    {images.length} file(s) selected
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    document.getElementById('image-upload')?.click()
+                  }
+                  className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#1DB954] hover:bg-[#1ed760] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1DB954] transition-colors"
+                >
+                  Upload Images
+                </button>
+              </div>
+              <button
+                onClick={handleGeneratePDF}
+                className="inline-flex items-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#1DB954] hover:bg-[#1ed760] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1DB954] transition-colors"
+              >
+                <FileDown className="w-5 h-5 mr-2" />
+                <span className="hidden sm:inline">Generate PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </button>
+            </div>
           </div>
 
           <SongTable songs={songs} onEdit={handleEdit} />
