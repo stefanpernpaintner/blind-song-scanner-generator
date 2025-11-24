@@ -8,10 +8,13 @@ class PDFGenerator {
   static SPACING_CM = 0;
   static PAGE_WIDTH = 21; // A4 width in cm
   static PAGE_HEIGHT = 29.7; // A4 height in cm
+  static QR_CODE_SIZE = 3.6;
+  static QR_CODE_OFFSET = 3.5;
 
   pdf: jsPDF;
   songs: { title: string; artist: string; year: number; spotifyUri: string }[];
   photos: (string | undefined)[];
+  private photoIndex: number;
 
   gradientColors = [
     [
@@ -58,12 +61,7 @@ class PDFGenerator {
     });
     this.pdf.setFont('helvetica');
     this.pdf.setLanguage('en-US');
-  }
-
-  randomIntInclusive(x: number, y: number): number {
-    const min = Math.min(x, y);
-    const max = Math.max(x, y);
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    this.photoIndex = 0;
   }
 
   calculateTilePosition(index: number, isBackSide = false) {
@@ -103,8 +101,7 @@ class PDFGenerator {
 
   addBackgroundPhoto(x: number, y: number) {
     if (this.photos.length > 0) {
-      const randomIndex = this.randomIntInclusive(0, this.photos.length - 1);
-      const photo = this.photos[randomIndex];
+      const photo = this.photos[this.photoIndex];
       if (photo) {
         this.pdf.addImage(
           photo,
@@ -116,15 +113,14 @@ class PDFGenerator {
           undefined,
           'FAST',
         );
+        this.photoIndex = (this.photoIndex + 1) % this.photos.length;
       }
     }
   }
-
   async generateAndAddQRCode(
     song: { spotifyUri: string },
     x: number,
     y: number,
-    shrink = false,
   ) {
     try {
       const spotifyUrl = song.spotifyUri.replace(
@@ -135,8 +131,8 @@ class PDFGenerator {
         width: PDFGenerator.TILE_SIZE_CM * 28.35,
         margin: 1,
       });
-      const offset = shrink ? 0.8 : 4.2;
-      const size = PDFGenerator.TILE_SIZE_CM - (shrink ? 1.6 : 4.6);
+      const offset = PDFGenerator.QR_CODE_OFFSET;
+      const size = PDFGenerator.TILE_SIZE_CM - PDFGenerator.QR_CODE_SIZE;
       this.pdf.addImage(qrDataUrl, 'PNG', x + offset, y + offset, size, size);
     } catch (error) {
       console.error('Error generating QR code:', error);
